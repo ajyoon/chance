@@ -447,7 +447,7 @@ def weighted_shuffle(weights):
     # shuffles list to remove bias when sorting
     random.shuffle(weighted_absolute_positions)
     # sorts list in descending weights
-    weighted_absolute_positions.sort(key=lambda (_, __, w): w, reverse=True)
+    weighted_absolute_positions.sort(key=lambda tup: tup[2], reverse=True)
 
     # at this point, we have a fair list of descending weights, and can
     # iterate through it and place the values close to where they requested
