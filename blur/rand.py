@@ -396,13 +396,9 @@ def weighted_shuffle(weights):
     it appears in ``weights``. ``weight`` is the weight given to the chance
     that the item appears in the specified ``place``.
 
-    The algorithm works by choosing an item from ``weights`` according to the
-    ``weight`` element and placing its ``list_item`` its the specified
-    ``place``. Items with the lowest ``weight`` will tend to be placed last,
-    filling in gaps left between higher priority items, making their positions
-    less predictable. ``weight`` values of 0 have the lowest possible
-    priority and will be placed anywhere left after other items have been
-    placed.
+    The algorithm works by shuffling the list and sorting it by decrementing
+    weight, and then iterating through and placing each item at the closest
+    available position it can find to the requested position.
 
     Args:
         weights (list[(Any, float or str, float)]):
@@ -415,23 +411,33 @@ def weighted_shuffle(weights):
     """
 
     def closest_available(requested_index, available_indices):
-        """The closest index to requested_index that is in the list of available_indices"""
-        # shuffles the available indexes to remove bias when finding the closest one
-        random.shuffle(available_indices)
-        # now, take the available index that is closest to the requested one
-        return min(available_indices, key=lambda index: abs(requested_index - index))
+        """Finds the closest available index to the requested index.
+        If there are two "closest" indexes, a random one will be returned."""
+        closest = None
+        min_distance = float("inf")
+        for index in available_indices:
+            distance = abs(requested_index - index)
+            if distance <= min_distance:
+                min_distance = distance
+                closest = index
+                # instantiate closest or overwrite it 50% of the time if exists
+                if closest is None or random.getrandbits(1):
+                    closest = index
+        return closest
 
     def requested_index(i, requested_pos, length):
-        """The index that a requested position (either 'STAY' or a percentage) is at for a given list length"""
+        """Calculates an absolute index for a requested position, where
+        a position is either a percentage or the string 'STAY'."""
         if isinstance(requested_pos, str):
             if requested_pos == 'STAY':
                 return i
             else:
-                raise ValueError("'" + requested_pos + "' is not a valid string argument for the requested position.")
+                msg = "'{0}' is not a valid str argument "
+                "for a requested position.".format(requested_pos)
+                raise ValueError(msg)
         else:
-            return int(round(requested_pos/100 * (length-1)))
+            return int(round(requested_pos / 100 * (length - 1)))
 
-    # constructs a list where the requested position is transformed from 'STAY' or a percentage to an absolute index
     weighted_absolute_positions = [
         (value, requested_index(i, requested_pos, len(weights)), weight)
         for i, (value, requested_pos, weight)
@@ -441,10 +447,10 @@ def weighted_shuffle(weights):
     # shuffles list to remove bias when sorting
     random.shuffle(weighted_absolute_positions)
     # sorts list in descending weights
-    weighted_absolute_positions.sort(key=lambda tup: tup[2], reverse=True)
+    weighted_absolute_positions.sort(key=lambda (_, __, w): w, reverse=True)
 
-    # at this point, we have a fair list of descending weights, and can iterate through it and place the values
-    # as close to the requested index as we are able to in the final list as we build it
+    # at this point, we have a fair list of descending weights, and can
+    # iterate through it and place the values close to where they requested
     shuffled_list = [None] * len(weights)
     available_indices = [i for i in range(len(weights))]
     for (value, requested_index, _) in weighted_absolute_positions:
