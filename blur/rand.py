@@ -406,9 +406,6 @@ def weighted_order(weights):
         list: the newly ordered list
     """
     remaining_items = weights[:]
-    # Sort remaining_items in decreasing order of weights to make item removal
-    # in the while loop more predictable when multiple items have the same
-    # out come value
     remaining_items.sort(key=lambda weight: weight[1], reverse=True)
     output_list = []
     while remaining_items:
