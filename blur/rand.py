@@ -384,78 +384,38 @@ def weighted_choice(weights):
         return random.choice([opt[0] for opt in options])
 
 
-def weighted_shuffle(weights):
+def weighted_order(weights):
     """
-    Non-uniformally shuffle a list.
+    Non-uniformally order a list according to weighted priorities.
 
-    ``weights`` is a list of tuples of the form: ``(Any, float or str, float)``
-    corresponding to ``(list_item, place, weight)``.
-    ``list_item`` is the item to place in the final list. ``place`` is either a
-    ``float`` between ``0`` and ``100`` representing the percent along the list
-    it will end up, or the ``str`` ``'STAY'`` meaning the item will stay where
-    it appears in ``weights``. ``weight`` is the weight given to the chance
-    that the item appears in the specified ``place``.
+    ``weights`` is a list of tuples of the form ``(item, priority)`` of
+    types ``(Any, float or int)``. The output list is constructed by repeatedly
+    calling ``weighted_choice()`` on the weights, adding items to the end of
+    the list as the are picked.
 
-    The algorithm works by shuffling the list and sorting it by decrementing
-    weight, and then iterating through and placing each item at the closest
-    available position it can find to the requested position.
+    Higher value weights will have a higher chance of appearing near the
+    beginning of the output list.
+
+    A list of all uniform weights is equivalent to calling ``random.shuffle()``
+    on the list of values.
 
     Args:
-        weights (list[(Any, float or str, float)]):
+        weights (list[(Any, float or int)]):
 
     Returns:
-        list: The shuffled list
-
-    Raises:
-        ValueError: If passed ``weights`` is not formed correctly
+        list: the newly ordered list
     """
-
-    def closest_available(requested_index, available_indices):
-        """Finds the closest available index to the requested index.
-        If there are two "closest" indexes, a random one will be returned."""
-        closest = None
-        min_distance = float("inf")
-        for index in available_indices:
-            distance = abs(requested_index - index)
-            if distance <= min_distance:
-                min_distance = distance
-                closest = index
-                # instantiate closest or overwrite it 50% of the time if exists
-                if closest is None or random.getrandbits(1):
-                    closest = index
-        return closest
-
-    def requested_index(i, requested_pos, length):
-        """Calculates an absolute index for a requested position, where
-        a position is either a percentage or the string 'STAY'."""
-        if isinstance(requested_pos, str):
-            if requested_pos == 'STAY':
-                return i
-            else:
-                msg = "'{0}' is not a valid str argument "
-                "for a requested position.".format(requested_pos)
-                raise ValueError(msg)
-        else:
-            return int(round(requested_pos / 100 * (length - 1)))
-
-    weighted_absolute_positions = [
-        (value, requested_index(i, requested_pos, len(weights)), weight)
-        for i, (value, requested_pos, weight)
-        in enumerate(weights)
-        ]
-
-    # shuffles list to remove bias when sorting
-    random.shuffle(weighted_absolute_positions)
-    # sorts list in descending weights
-    weighted_absolute_positions.sort(key=lambda tup: tup[2], reverse=True)
-
-    # at this point, we have a fair list of descending weights, and can
-    # iterate through it and place the values close to where they requested
-    shuffled_list = [None] * len(weights)
-    available_indices = [i for i in range(len(weights))]
-    for (value, requested_index, _) in weighted_absolute_positions:
-        target_position = closest_available(requested_index, available_indices)
-        available_indices.remove(target_position)
-        shuffled_list[target_position] = value
-
-    return shuffled_list
+    remaining_items = weights[:]
+    # Sort remaining_items in decreasing order of weights to make item removal
+    # in the while loop more predictable when multiple items have the same
+    # out come value
+    remaining_items.sort(key=lambda weight: weight[1], reverse=True)
+    output_list = []
+    while remaining_items:
+        picked_value = weighted_choice(remaining_items)
+        output_list.append(picked_value)
+        # Remove the picked item from remaining_items
+        remove_item = next((item for item in remaining_items
+                            if item[0] == picked_value))
+        remaining_items.remove(remove_item)
+    return output_list

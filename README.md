@@ -1,7 +1,7 @@
 # blur
-#### 0.2dev
+#### 0.2dev (unstable)
 
-[![Build Status](https://travis-ci.org/ajyoon/blur.svg?branch=master)](https://travis-ci.org/ajyoon/blur)  [![Documentation Status](https://readthedocs.org/projects/blur/badge/?version=latest)](http://blur.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.org/ajyoon/blur.svg?branch=0.2dev)](https://travis-ci.org/ajyoon/blur)  [![Documentation Status](https://readthedocs.org/projects/blur/badge/?version=latest)](http://blur.readthedocs.io/en/latest/?badge=latest)
 
 blur is a suite of tools for Python to help make using chance operations in
 algorithmic art easier.
