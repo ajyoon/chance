@@ -15,6 +15,14 @@ from warnings import warn
 
 
 ###############################################################################
+#   Module-specific Exception classes
+###############################################################################
+class ProbabilityUndefinedError(Exception):
+    """Exception raised when the probability of a system is undefined."""
+    pass
+
+
+###############################################################################
 #   Local utility functions
 ###############################################################################
 def _linear_interp(curve, test_x, round_result=False):
@@ -339,7 +347,7 @@ def weighted_rand(weights, round_result=False):
         return random.choice(weights)[0]
 
 
-def weighted_choice(weights):
+def weighted_choice(weights, as_index_and_value_tuple=False):
     """
     Generate a non-uniform random choice based on a list of option tuples.
 
@@ -350,45 +358,57 @@ def weighted_choice(weights):
             is a ``tuple`` of form ``(Any, float)`` corresponding to
             ``(outcome, weight)``. Outcome values may be of any type.
             Options with weight ``0`` or less will have no chance to be
-            rolled, unless all weights are ``0``, in which case a uniformally
-            random choice will be returned.
+            rolled - if this is the case in every item of ``weights``,
+            a ``ValueError`` is raised.
+        as_index_and_value_tuple (bool): Option to return an ``(index, value)``
+            tuple instead of just a single ``value``. This is useful when
+            multiple values in ``weights`` are the same and you need to know
+            exactly which one was picked.
 
     Returns:
-        Any: Any one of the items in the outcomes of ``weights``
+        Any: If as_index_and_value_tuple == False, any one of the items in
+            the outcomes of ``weights``
+        tuple (int, Any): If as_index_and_value_tuple == True, a tuple of
+            the index as well as value of the item that was picked.
+
+    Raises:
+        ValueError: if ``weights`` is an empty list.
+        ProbabilityUndefinedError: if no item weights in
+            ``weights`` are greater than 0.
+        AssertionError: if something in the function is broken.
     """
-    # If there's only one choice, choose it
-    if len(weights) == 1:
-        return weights[0][0]
-    # Remove all weights with weight 0 or less
-    working_weights = [w for w in weights if w[1] > 0]
-    # If no weights remain after trimming, choose a random option
-    if not working_weights:
-        return random.choice([w[0] for w in weights])
+    if not len(weights):
+        raise ValueError('List passed to weighted_choice() cannot be empty.')
     # Construct a line segment where each weight outcome is
     # allotted a length equal to the outcome's weight,
     # pick a uniformally random point along the line, and take
-    # the outcome that point corrosponds to
-    prob_sum = sum(w[1] for w in working_weights)
+    # the outcome that point corresponds to
+    prob_sum = sum(w[1] for w in weights)
+    if prob_sum <= 0:
+        raise ProbabilityUndefinedError(
+            'No item weights in weighted_choice() are greater than 0. '
+            'Probability distribution is undefined.')
     sample = random.uniform(0, prob_sum)
     current_pos = 0
     i = 0
-    while i < len(working_weights):
-        if current_pos <= sample <= (current_pos + working_weights[i][1]):
-            return working_weights[i][0]
-        current_pos += working_weights[i][1]
+    while i < len(weights):
+        if current_pos <= sample <= (current_pos + weights[i][1]):
+            if as_index_and_value_tuple:
+                return (i, weights[i][0])
+            else:
+                return weights[i][0]
+        current_pos += weights[i][1]
         i += 1
     else:
-        warn("Option couldn't be found in weighted_choice(). "
-             "It's not you it's me. "
-             "Please submit a bug report at https://github.com/ajyoon/blur")
-        return random.choice([opt[0] for opt in options])
+        raise AssertionError('Something went wrong in weighted_choice(). '
+                             'Please submit a bug report!')
 
 
 def weighted_order(weights):
     """
     Non-uniformally order a list according to weighted priorities.
 
-    ``weights`` is a list of tuples of the form ``(item, priority)`` of
+    ``weights`` is a list of tuples of the form ``(item, weight)`` of
     types ``(Any, float or int)``. The output list is constructed by repeatedly
     calling ``weighted_choice()`` on the weights, adding items to the end of
     the list as the are picked.
@@ -399,20 +419,30 @@ def weighted_order(weights):
     A list of all uniform weights is equivalent to calling ``random.shuffle()``
     on the list of values.
 
+    All weight values must be greater than 0
+    or a ``ProbabilityUndefinedError`` will be raised.
+
+    Passing an empty list will return an empty list.
+
     Args:
         weights (list[(Any, float or int)]):
 
     Returns:
         list: the newly ordered list
+
+    Raises:
+        ProbabilityUndefinedError: if any weight value is below 0.
     """
-    remaining_items = weights[:]
-    remaining_items.sort(key=lambda weight: weight[1], reverse=True)
+    if not len(weights):
+        return []
+    if any(w[1] <= 0 for w in weights):
+        raise ProbabilityUndefinedError(
+            'All weight values must be greater than 0.')
+    working_list = weights[:]
     output_list = []
-    while remaining_items:
-        picked_value = weighted_choice(remaining_items)
-        output_list.append(picked_value)
-        # Remove the picked item from remaining_items
-        remove_item = next((item for item in remaining_items
-                            if item[0] == picked_value))
-        remaining_items.remove(remove_item)
+    while working_list:
+        picked_item = weighted_choice(working_list,
+                                      as_index_and_value_tuple=True)
+        output_list.append(picked_item[1])
+        del working_list[picked_item[0]]
     return output_list

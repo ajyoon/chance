@@ -274,10 +274,22 @@ class TestRand(unittest.TestCase):
         self.assertTrue(50 <= five_count <= 600)
         self.assertTrue(300 <= ten_count <= 900)
 
-    def test_weighted_choice_with_all_zero_weights(self):
-        options = [(1, 0), (5, 0), (10, 0)]
-        self.assertIn(rand.weighted_choice(options),
-                      [1, 5, 10])
+    def test_weighted_choice_as_tuple(self):
+        options = [(1, 0), (5, -1), (10, 5), (19, 1)]
+        for i in range(25):
+            result = rand.weighted_choice(options, True)
+            expected_index = next(
+                i for i, option in enumerate(options)
+                if option[0] == result[1])
+            self.assertEqual(expected_index, result[0])
+
+    def test_weighted_choice_with_empty_list(self):
+        with self.assertRaises(ValueError):
+            foo = rand.weighted_choice([])
+
+    def test_weighted_choice_with_all_non_pos_weights(self):
+        with self.assertRaises(rand.ProbabilityUndefinedError):
+            foo = rand.weighted_choice([(1, 0), (5, 0), (10, 0)])
 
     def test_weighted_choice_with_mixed_pos_neg_weights(self):
         options = [(1, 0), (5, -1), (10, 5), (19, 1)]
@@ -285,10 +297,20 @@ class TestRand(unittest.TestCase):
             self.assertIn(rand.weighted_choice(options),
                           [10, 19])
 
+    def test_weighted_choice_with_one_weight_returns_it(self):
+        weight_list = [('The Only Weight', 2)]
+        expected_result = weight_list[0][0]
+        self.assertEqual(rand.weighted_choice(weight_list), expected_result)
+
     def test_weighted_rand_with_one_weight_returns_it(self):
         weight_list = [('The Only Weight', 2)]
         expected_result = weight_list[0][0]
         self.assertEqual(rand.weighted_rand(weight_list), expected_result)
+
+    def test_weighted_rand_and_choice_with_one_weight_equivalent(self):
+        weight_list = [('The Only Weight', 2)]
+        self.assertEqual(rand.weighted_rand(weight_list),
+                         rand.weighted_choice(weight_list))
 
     def test_weighted_rand_with_arbitrary_curve(self):
         """
@@ -375,13 +397,13 @@ class TestRand(unittest.TestCase):
                 success_count += 1
         self.assertGreater(success_count, TRIALS * 0.75)
 
-    def test_weighted_order_with_all_zero_weights(self):
+    def test_weighted_order_with_all_1_weights(self):
         # When every weight is 0, the probability spread should be uniform
-        original_list = [('Something', 0),
-                         ('Another',   0),
-                         ('Again',     0),
-                         ('And',       0),
-                         ('More',      0)]
+        original_list = [('Something', 1),
+                         ('Another',   1),
+                         ('Again',     1),
+                         ('And',       1),
+                         ('More',      1)]
         landing_positions = {'Something': [],
                              'Another': [],
                              'Again': [],
@@ -395,3 +417,10 @@ class TestRand(unittest.TestCase):
         for positions in landing_positions.values():
             average = sum(positions) / len(positions)
             self.assertLess(abs(average - 2.5), 1)
+
+    def test_weighted_order_with_invalid_weight(self):
+        with self.assertRaises(rand.ProbabilityUndefinedError):
+            foo = rand.weighted_order([('bar', 0), ('baz', 5), ('buzz', -3)])
+
+    def test_weighted_order_with_empty_list_returns_empty_list(self):
+        self.assertEqual(rand.weighted_order([]), [])
