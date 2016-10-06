@@ -12,7 +12,7 @@ algorithmic art easier.
 >>> graph = Graph.from_string('blur is a suite of tools '
 ... 'to help make using chance operations in algorithmic '
 ... 'art easier', word_distance_weights)
->>> print(' '.join(graph.pick().name for i in range(8)))
+>>> print(' '.join(graph.pick().value for i in range(8)))
 using chance algorithmic in algorithmic art easier blur
 ```
 
